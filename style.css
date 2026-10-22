@@ -27,14 +27,13 @@ button { font-family: inherit; cursor: pointer; }
   justify-content: center;
   width: 84px;
   height: 84px;
-  border-radius: 50%;
-  background: #fff;
+  
   color: var(--roxo);
   font-weight: 700;
   font-size: 13px;
   line-height: 1.1;
   text-align: center;
-  border: 3px solid var(--roxo);
+
 }
 .logo small { font-size: 9px; font-weight: 500; }
 
@@ -105,7 +104,7 @@ body.auth {
   padding: 18px 0;
   flex-shrink: 0;
 }
-.sidebar .logo { width: 70px; height: 70px; font-size: 11px; margin-bottom: 26px; }
+.sidebar .logo { width: 160px; height: auto; font-size: 11px; margin-bottom: 26px; }
 .sidebar nav { width: 100%; display: flex; flex-direction: column; }
 .sidebar nav a {
   padding: 10px 16px;
