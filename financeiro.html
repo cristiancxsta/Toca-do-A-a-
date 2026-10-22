@@ -3,14 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadastro</title>
+    <title>Financeiro</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div class="app">
+  <div class="app">
     <aside class="sidebar">
-      <div class="logo">Toca do<br>Açaí<small>& Sorvetes</small></div>
+      <div class="logo">
+        <img src="tocadoacailogo.jpg" alt="Logo Toca do Açaí" style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; display: block; margin: 0 auto;">
+      </div>
       <nav>
         <a href="Estoque.html">Estoque</a>
         <a href="financeiro.html" class="ativo">Financeiro</a>
@@ -23,7 +25,7 @@
         <small>Gerente</small>
       </div>
     </aside>
- 
+
     <main class="conteudo">
       <div class="topo">
         <h1>Financeiro</h1>
@@ -34,9 +36,9 @@
           </select>
         </div>
       </div>
- 
+
       <p class="subtitulo">Relatório Mensal</p>
- 
+
       <section class="cards">
         <div class="card">
           <div class="rotulo">N° de vendas</div>
@@ -51,7 +53,7 @@
           <div class="valor">R$ 4.000,00</div>
         </div>
       </section>
- 
+
       <section class="grafico">
         <div class="legenda">
           <span style="--cor:#3b3bd9">Lucro</span>
@@ -62,21 +64,20 @@
       </section>
     </main>
   </div>
- 
+
   <script>
-    // Dados de exemplo (em R$) para o protótipo
     var meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
     var series = [
       { nome: "Receita",  cor: "#4caf50", dados: [11000,13500,12500,14500,12000,13800,11500,13000,12800,14200,null,null] },
       { nome: "Despesas", cor: "#e53935", dados: [3500,2800,3200,2500,3800,3000,2700,3300,3100,2900,null,null] },
       { nome: "Lucro",    cor: "#3b3bd9", dados: [7500,10700,9300,12000,8200,10800,8800,9700,9700,11300,null,null] }
     ];
- 
+
     var W = 900, H = 380, ml = 70, mr = 20, mt = 10, mb = 40;
     var maxY = 16000, passo = 2000;
     var svg = document.getElementById("grafico");
     var ns = "http://www.w3.org/2000/svg";
- 
+
     function el(tag, attrs, texto) {
       var e = document.createElementNS(ns, tag);
       for (var k in attrs) e.setAttribute(k, attrs[k]);
@@ -86,18 +87,15 @@
     }
     function x(i) { return ml + i * (W - ml - mr) / (meses.length - 1); }
     function y(v) { return mt + (H - mt - mb) * (1 - v / maxY); }
- 
-    // Grade e eixo Y
+
     for (var v = 0; v <= maxY; v += passo) {
       el("line", { x1: ml, x2: W - mr, y1: y(v), y2: y(v), stroke: "#e0e0e6" });
       el("text", { x: ml - 8, y: y(v) + 4, "text-anchor": "end", "font-size": 11, fill: "#555" },
         "R$ " + v.toLocaleString("pt-BR"));
     }
-    // Eixo X
     meses.forEach(function (m, i) {
       el("text", { x: x(i), y: H - 14, "text-anchor": "middle", "font-size": 11, fill: "#555" }, m);
     });
-    // Linhas
     series.forEach(function (s) {
       var pts = [];
       s.dados.forEach(function (d, i) { if (d !== null) pts.push(x(i) + "," + y(d)); });
