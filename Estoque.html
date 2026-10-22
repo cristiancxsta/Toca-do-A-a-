@@ -60,48 +60,33 @@
  
   <div class="overlay" id="modal-cadastro">
     <form class="modal proto">
-      <h2>Novo Cadastro</h2>
+      <h2>Adicionar Produto</h2>
       <div class="form-grid">
         <div>
-          <label>Seção *</label>
-          <select required>
-            <option value="">Ex: Contas a Receber</option>
-            <option>Categorias</option>
-            <option>Contas a Pagar</option>
-            <option>Contas a Receber</option>
-          </select>
+          <label>Nome do Produto *</label>
+          <input type="text" placeholder="Ex: Sorvete" required>
         </div>
         <div>
-          <label>Nome *</label>
-          <input type="text" placeholder="Ex: Pedido" required>
+          <label>Quantidade *</label>
+          <input type="number" step="1" min="0" placeholder="1,2,3..." required>
         </div>
         <div>
-          <label>Valor *</label>
-          <input type="number" step="0.01" min="0" placeholder="R$0,00" required>
-        </div>
-        <div>
-          <label>ID</label>
-          <input type="text" value="Auto" readonly>
-        </div>
-        <div>
-          <label>Descrição</label>
-          <input type="text">
-        </div>
-        <div>
-          <label>Nome do Cliente</label>
-          <input type="text">
-        </div>
-        <div>
-          <label>Data de Vencimento</label>
-          <input type="date">
-        </div>
-        <div>
-          <label>Status</label>
+         
+          <label>Categoria</label>
           <select>
-            <option>Pendente</option>
-            <option>Pago</option>
+            <option>Sorvete</option>
+            <option>Acai</option>
+            <option>Embalagem</option>
+            <option>Acompanhamentos</option>
+            <option>Condimento</option>
+            <option>Fruta</option>
           </select>
         </div>
+        <div>
+          <label>Preço por Unidade</label>
+          <input type="text" placeholder="R$00,00">
+        </div>
+        
       </div>
       <div class="modal-rodape">
         <button type="button" class="btn-voltar" data-fechar aria-label="Voltar">←</button>
