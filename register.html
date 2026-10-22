@@ -4,8 +4,45 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Criar Conta</title>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
-    
+<body class="auth">
+  <form class="auth-box" action="index.html">
+    <div class="logo">Toca do<br>Açaí<small>& Sorvetes</small></div>
+
+    <div>
+      <label for="email">E-mail</label>
+      <input type="email" id="email" placeholder="Insira o seu E-mail" required>
+    </div>
+    <div>
+      <label for="senha">Senha</label>
+      <input type="password" id="senha" placeholder="Insira a sua senha" required>
+    </div>
+    <div>
+      <label for="confirmar">Confirmar senha</label>
+      <input type="password" id="confirmar" placeholder="Insira a sua senha novamente" required>
+    </div>
+    <div>
+      <label for="usuario">Nome de usuário</label>
+      <input type="text" id="usuario" placeholder="Insira o nome de Usuário" required>
+    </div>
+
+    <button type="submit" class="btn-principal">Criar conta</button>
+
+    <div class="toggle">
+      <a href="index.html">Entrar</a>
+      <a href="register.html" class="ativo">Criar conta</a>
+    </div>
+  </form>
+
+  <script>
+    // Confere se as senhas são iguais
+    document.querySelector("form").addEventListener("submit", function (e) {
+      if (document.getElementById("senha").value !== document.getElementById("confirmar").value) {
+        e.preventDefault();
+        alert("As senhas não conferem.");
+      }
+    });
+  </script>
 </body>
 </html>
