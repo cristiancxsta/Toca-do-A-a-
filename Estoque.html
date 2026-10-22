@@ -9,7 +9,6 @@
 <body>
   <div class="app">
     <aside class="sidebar">
-      <!-- Logo em formato circular -->
       <div class="logo">
         <img src="tocadoacailogo.jpg" alt="Logo Toca do Açaí" style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; display: block; margin: 0 auto;">
       </div>
@@ -102,7 +101,6 @@
     </main>
   </div>
  
-  <!-- Modal: Novo Cadastro -->
   <div class="overlay" id="modal-cadastro">
     <form class="modal proto">
       <h2>Novo Cadastro</h2>
@@ -157,7 +155,6 @@
  
   <script src="script.js"></script>
   <script>
-    // Pesquisa filtra as linhas das três tabelas
     document.getElementById("busca").addEventListener("input", function (e) {
       var termo = e.target.value.toLowerCase();
       document.querySelectorAll(".coluna tbody tr").forEach(function (tr) {
