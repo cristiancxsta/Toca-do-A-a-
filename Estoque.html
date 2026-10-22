@@ -7,13 +7,16 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-     <div class="app">
+  <div class="app">
     <aside class="sidebar">
-      <div class="logo">Toca do<br>Açaí<small>& Sorvetes</small></div>
+      <!-- Logo em formato circular -->
+      <div class="logo">
+        <img src="tocadoacailogo.jpg" alt="Logo Toca do Açaí" style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; display: block; margin: 0 auto;">
+      </div>
       <nav>
-        <a href="Estoque.html" class="ativo">Estoque</a>
+        <a href="Estoque.html">Estoque</a>
         <a href="financeiro.html">Financeiro</a>
-        <a href="cadastro.html">Cadastro</a>
+        <a href="cadastro.html" class="ativo">Cadastro</a>
         <a href="saida.html">Saída</a>
       </nav>
       <div class="usuario">
@@ -25,9 +28,9 @@
  
     <main class="conteudo">
       <div class="topo">
-        <h1>Visão Geral Estoque</h1>
+        <h1>Cadastro</h1>
         <div class="acoes">
-          <button class="btn-pilula" data-abrir="modal-produto">Novo Produto</button>
+          <button class="btn-pilula" data-abrir="modal-cadastro">Novo Cadastro</button>
           <select class="mes" aria-label="Mês">
             <option>Setembro</option>
             <option selected>Outubro</option>
@@ -38,83 +41,126 @@
  
       <section class="cards">
         <div class="card">
-          <div class="rotulo">Valor em estoque</div>
-          <div class="valor">R$153,00</div>
-          <div class="detalhe">+ 15%</div>
+          <div class="rotulo">Categorias</div>
+          <div class="valor">6</div>
         </div>
         <div class="card">
-          <div class="rotulo">Itens cadastrados</div>
-          <div class="valor">3</div>
-          <div class="detalhe">+ 10 novos neste mês</div>
+          <div class="rotulo">Contas a pagar</div>
+          <div class="valor">2</div>
         </div>
         <div class="card">
-          <div class="rotulo">Estoque baixo</div>
-          <div class="valor">1</div>
-          <div class="detalhe">+ 3 novos neste mês</div>
+          <div class="rotulo">Contas a receber</div>
+          <div class="valor">4</div>
         </div>
       </section>
  
-      <section class="painel">
-        <div class="painel-topo">
-          <h2>Produtos</h2>
-          <input class="busca" type="search" id="busca" placeholder="Pesquisar">
+      <div class="painel-topo">
+        <span></span>
+        <input class="busca" type="search" id="busca" placeholder="Pesquisar">
+      </div>
+ 
+      <section class="colunas">
+        <div class="painel coluna">
+          <h3>CATEGORIAS</h3>
+          <div class="total">Total: 6</div>
+          <table>
+            <tbody>
+              <tr><td>001</td><td>SORVETE</td></tr>
+              <tr><td>002</td><td>AÇAÍ</td></tr>
+              <tr><td>003</td><td>EMBALAGEM</td></tr>
+              <tr><td>004</td><td>ACOMPANHAMENTOS</td></tr>
+              <tr><td>005</td><td>CONDIMENTO</td></tr>
+              <tr><td>006</td><td>FRUTA</td></tr>
+            </tbody>
+          </table>
         </div>
-        <table id="tabela">
-          <thead>
-            <tr>
-              <th>ID</th><th>Descrição</th><th>Categoria</th>
-              <th class="num">Quantidade</th><th class="num">Preço unit.</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>001</td><td>Sorvete de Chocolate</td><td>SORVETE</td><td class="num">20</td><td class="num">R$10,00</td></tr>
-            <tr><td>002</td><td>Sorvete de Creme</td><td>SORVETE</td><td class="num">12</td><td class="num">R$14,00</td></tr>
-            <tr><td>003</td><td>Sorvete de Maracujá</td><td>SORVETE</td><td class="num">17</td><td class="num">R$9,00</td></tr>
-          </tbody>
-        </table>
+ 
+        <div class="painel coluna">
+          <h3>CONTAS A PAGAR</h3>
+          <div class="total">Total: R$800,00</div>
+          <table>
+            <tbody>
+              <tr><td>001</td><td>FORNECEDOR</td><td class="num">R$550,00</td></tr>
+              <tr><td>002</td><td>ENERGIA</td><td class="num">R$250,00</td></tr>
+            </tbody>
+          </table>
+        </div>
+ 
+        <div class="painel coluna">
+          <h3>CONTAS A RECEBER</h3>
+          <div class="total">Total: R$4000,00</div>
+          <table>
+            <tbody>
+              <tr><td>142</td><td>Pedido - Sorvete</td><td class="num">R$ 75,00</td></tr>
+              <tr><td>837</td><td>Encomenda - Picolé</td><td class="num">R$ 329,00</td></tr>
+              <tr><td>838</td><td>Encomenda - Açaí</td><td class="num">R$ 750,00</td></tr>
+              <tr><td>572</td><td>Fornecimento - Açaí</td><td class="num">R$ 2846,00</td></tr>
+            </tbody>
+          </table>
+        </div>
       </section>
     </main>
   </div>
  
-  <!-- Modal: Novo Produto -->
-  <div class="overlay" id="modal-produto">
+  <!-- Modal: Novo Cadastro -->
+  <div class="overlay" id="modal-cadastro">
     <form class="modal proto">
-      <h2>Novo Produto</h2>
+      <h2>Novo Cadastro</h2>
       <div class="form-grid">
         <div>
-          <label>Nome do Produto</label>
-          <input type="text" placeholder="Ex: Sorvete de Chocolate" required>
-        </div>
-        <div>
-          <label>Quantidade</label>
-          <input type="number" min="0" placeholder="0, 1, 2, 3..." required>
-        </div>
-        <div>
-          <label>Categoria</label>
+          <label>Seção *</label>
           <select required>
-            <option value="">Ex: Condimento</option>
-            <option>Sorvete</option><option>Açaí</option><option>Embalagem</option>
-            <option>Acompanhamentos</option><option>Condimento</option><option>Fruta</option>
+            <option value="">Ex: Contas a Receber</option>
+            <option>Categorias</option>
+            <option>Contas a Pagar</option>
+            <option>Contas a Receber</option>
           </select>
         </div>
         <div>
-          <label>Preço por unidade</label>
+          <label>Nome *</label>
+          <input type="text" placeholder="Ex: Pedido" required>
+        </div>
+        <div>
+          <label>Valor *</label>
           <input type="number" step="0.01" min="0" placeholder="R$0,00" required>
+        </div>
+        <div>
+          <label>ID</label>
+          <input type="text" value="Auto" readonly>
+        </div>
+        <div>
+          <label>Descrição</label>
+          <input type="text">
+        </div>
+        <div>
+          <label>Nome do Cliente</label>
+          <input type="text">
+        </div>
+        <div>
+          <label>Data de Vencimento</label>
+          <input type="date">
+        </div>
+        <div>
+          <label>Status</label>
+          <select>
+            <option>Pendente</option>
+            <option>Pago</option>
+          </select>
         </div>
       </div>
       <div class="modal-rodape">
         <button type="button" class="btn-voltar" data-fechar aria-label="Voltar">←</button>
-        <button type="submit" class="btn-pilula">Adicionar produto</button>
+        <button type="submit" class="btn-pilula">Adicionar</button>
       </div>
     </form>
   </div>
  
   <script src="script.js"></script>
   <script>
-    // Filtro da busca na tabela
+    // Pesquisa filtra as linhas das três tabelas
     document.getElementById("busca").addEventListener("input", function (e) {
       var termo = e.target.value.toLowerCase();
-      document.querySelectorAll("#tabela tbody tr").forEach(function (tr) {
+      document.querySelectorAll(".coluna tbody tr").forEach(function (tr) {
         tr.style.display = tr.textContent.toLowerCase().includes(termo) ? "" : "none";
       });
     });
