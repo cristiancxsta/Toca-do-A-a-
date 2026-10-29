@@ -72,7 +72,63 @@
           </tbody>
         </table>
       </section>
-     
+
+     <section class="grafico">
+        <div class="legenda">
+          <span style="--cor:#3b3bd9">Lucro</span>
+          <span style="--cor:#4caf50">Receita</span>
+          <span style="--cor:#e53935">Despesas</span>
+        </div>
+        <svg id="grafico" viewBox="0 0 900 380" role="img" aria-label="Gráfico mensal de lucro, receita e despesas"></svg>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    var meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+    var series = [
+      { nome: "Receita",  cor: "#4caf50", dados: [11000,13500,12500,14500,12000,13800,11500,13000,12800,14200,null,null] },
+      { nome: "Despesas", cor: "#e53935", dados: [3500,2800,3200,2500,3800,3000,2700,3300,3100,2900,null,null] },
+      { nome: "Lucro",    cor: "#3b3bd9", dados: [7500,10700,9300,12000,8200,10800,8800,9700,9700,11300,null,null] }
+    ];
+
+    var W = 900, H = 380, ml = 70, mr = 20, mt = 10, mb = 40;
+    var maxY = 16000, passo = 2000;
+    var svg = document.getElementById("grafico");
+    var ns = "http://www.w3.org/2000/svg";
+
+    function el(tag, attrs, texto) {
+      var e = document.createElementNS(ns, tag);
+      for (var k in attrs) e.setAttribute(k, attrs[k]);
+      if (texto !== undefined) e.textContent = texto;
+      svg.appendChild(e);
+      return e;
+    }
+    function x(i) { return ml + i * (W - ml - mr) / (meses.length - 1); }
+    function y(v) { return mt + (H - mt - mb) * (1 - v / maxY); }
+
+    for (var v = 0; v <= maxY; v += passo) {
+      el("line", { x1: ml, x2: W - mr, y1: y(v), y2: y(v), stroke: "#e0e0e6" });
+      el("text", { x: ml - 8, y: y(v) + 4, "text-anchor": "end", "font-size": 11, fill: "#555" },
+        "R$ " + v.toLocaleString("pt-BR"));
+    }
+    meses.forEach(function (m, i) {
+      el("text", { x: x(i), y: H - 14, "text-anchor": "middle", "font-size": 11, fill: "#555" }, m);
+    });
+    series.forEach(function (s) {
+      var pts = [];
+      s.dados.forEach(function (d, i) { if (d !== null) pts.push(x(i) + "," + y(d)); });
+      el("polyline", { points: pts.join(" "), fill: "none", stroke: s.cor, "stroke-width": 2.5 });
+      s.dados.forEach(function (d, i) {
+        if (d !== null) {
+          var c = el("circle", { cx: x(i), cy: y(d), r: 3.5, fill: s.cor });
+          var t = document.createElementNS(ns, "title");
+          t.textContent = s.nome + " – " + meses[i] + ": R$ " + d.toLocaleString("pt-BR");
+          c.appendChild(t);
+        }
+      });
+    });
+  </script>
  
   <div class="overlay" id="modal-cadastro">
     <form class="modal proto">
