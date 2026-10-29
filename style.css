@@ -19,7 +19,6 @@ body {
 a { color: inherit; text-decoration: none; }
 button { font-family: inherit; cursor: pointer; }
 
-/* ---------- Logo (placeholder em texto) ---------- */
 .logo {
   display: flex;
   flex-direction: column;
@@ -37,7 +36,6 @@ button { font-family: inherit; cursor: pointer; }
 }
 .logo small { font-size: 9px; font-weight: 500; }
 
-/* ---------- Login / Criar conta ---------- */
 body.auth {
   background: var(--roxo-claro);
   min-height: 100vh;
@@ -91,7 +89,6 @@ body.auth {
 }
 .toggle a.ativo { background: var(--roxo-claro); font-weight: 600; }
 
-/* ---------- Layout do sistema ---------- */
 .app { display: flex; min-height: 100vh; }
 
 .sidebar {
@@ -159,7 +156,6 @@ select.mes, select.campo {
   font-family: inherit;
 }
 
-/* ---------- Cards de resumo ---------- */
 .cards { display: flex; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
 .card {
   background: var(--roxo);
@@ -174,7 +170,6 @@ select.mes, select.campo {
 .card .valor { font-size: 24px; font-weight: 700; margin: 4px 0; }
 .card .detalhe { font-size: 10px; opacity: .8; }
 
-/* ---------- Tabelas ---------- */
 .painel { background: #fff; border-radius: 10px; padding: 16px; border: 1px solid var(--cinza-borda); }
 .painel-topo {
   display: flex; align-items: center; justify-content: space-between;
@@ -204,7 +199,6 @@ tbody tr:nth-child(even) { background: #fafafc; }
 td.num, th.num { text-align: right; }
 .tag-baixo { color: #b3261e; font-weight: 600; }
 
-/* ---------- Financeiro ---------- */
 .subtitulo { font-size: 13px; color: #555; margin-bottom: 14px; }
 .grafico { background: #fff; border: 1px solid var(--cinza-borda); border-radius: 10px; padding: 16px; }
 .grafico svg { width: 100%; height: auto; display: block; }
@@ -214,12 +208,10 @@ td.num, th.num { text-align: right; }
   margin-right: 5px; border-radius: 2px; background: var(--cor);
 }
 
-/* ---------- Cadastro (3 colunas) ---------- */
 .colunas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .coluna h3 { font-size: 12px; color: var(--roxo); margin-bottom: 2px; }
 .coluna .total { font-size: 11px; color: #666; margin-bottom: 8px; }
 
-/* ---------- Modais ---------- */
 .overlay {
   position: fixed; inset: 0;
   background: rgba(20, 8, 40, .45);
