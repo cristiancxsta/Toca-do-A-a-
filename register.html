@@ -8,7 +8,6 @@
 </head>
 <body class="auth">
   <form class="auth-box" action="index.html">
-    <!-- Logo em formato circular -->
     <div class="logo">
       <img src="tocadoacailogo.jpg" alt="Logo Toca do Açaí" class="logo">
 
@@ -38,7 +37,6 @@
   </form>
 
   <script>
-    // Confere se as senhas são iguais antes de enviar
     document.querySelector("form").addEventListener("submit", function (e) {
       if (document.getElementById("senha").value !== document.getElementById("confirmar").value) {
         e.preventDefault();
