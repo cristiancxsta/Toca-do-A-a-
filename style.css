@@ -50,7 +50,13 @@ body.auth {
   align-items: stretch;
   gap: 14px;
 }
-.auth-box .logo { align-self: center; margin-bottom: 14px; }
+.auth-box .logo {
+  align-self: center;
+  margin-bottom: 14px;
+  width: 200px;
+  height: auto;
+  object-fit: contain;
+}
 .auth-box label { font-size: 12px; font-weight: 600; color: var(--roxo); }
 .auth-box input {
   width: 100%;
