@@ -239,8 +239,8 @@ function desenharContas(secao) {
     total += Number(contas[i].valor);
   }
 
-  quantidadeElemento.textContent = contas.length;
-  totalElemento.textContent = "Total: " + formatarValor(total);
+  quantidadeElemento.textContent = "Quantidade: " + contas.length;
+  totalElemento.textContent = formatarValor(total);
 }
 
 function desenharPagina() {
