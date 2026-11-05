@@ -7,10 +7,10 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="auth">
-  <form class="auth-box" action="index.html">
+  <form class="auth-box" id="form-registro" action="index.html">
     <div class="logo">
-      <img src="tocadoacailogo.jpg" alt="Logo Toca do Açaí" class="logo">
-
+      <img src="tocadoacailogo.jpg" alt="Logo Toca do Açaí" class="auth-logo-image">
+    </div>
     <div>
       <label for="email">E-mail</label>
       <input type="email" id="email" placeholder="Insira o seu E-mail" required>
@@ -36,13 +36,6 @@
     </div>
   </form>
 
-  <script>
-    document.querySelector("form").addEventListener("submit", function (e) {
-      if (document.getElementById("senha").value !== document.getElementById("confirmar").value) {
-        e.preventDefault();
-        alert("As senhas não conferem.");
-      }
-    });
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
