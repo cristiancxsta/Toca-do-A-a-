@@ -4,7 +4,7 @@ var mesesDoAno = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
 ];
-var limiteEstoqueBaixo = 3;
+var limiteEstoqueBaixo = 5;
 
 async function requisitar(url, opcoes) {
   var resposta = await fetch(url, Object.assign({
