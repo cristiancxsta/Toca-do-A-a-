@@ -7,27 +7,28 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="auth">
-  <form class="auth-box" id="form-registro" action="index.html">
+  <form class="auth-box" id="form-registro">
     <div class="logo">
-      <img src="tocadoacailogo.jpg" alt="Logo Toca do Açaí" class="auth-logo-image">
+      <img src="tocadoacai_roxo_contorno_v2.png" alt="Logo Toca do Açaí" class="auth-logo-image">
     </div>
     <div>
       <label for="email">E-mail</label>
-      <input type="email" id="email" placeholder="Insira o seu E-mail" required>
+      <input type="email" id="email" autocomplete="username" placeholder="Insira o seu E-mail" required>
     </div>
     <div>
       <label for="senha">Senha</label>
-      <input type="password" id="senha" placeholder="Insira a sua senha" required>
+      <input type="password" id="senha" autocomplete="new-password" minlength="8" placeholder="Insira a sua senha (mínimo 8 caracteres)" required>
     </div>
     <div>
       <label for="confirmar">Confirmar senha</label>
-      <input type="password" id="confirmar" placeholder="Insira a sua senha novamente" required>
+      <input type="password" id="confirmar" autocomplete="new-password" minlength="8" placeholder="Insira a sua senha novamente" required>
     </div>
     <div>
       <label for="usuario">Nome de usuário</label>
       <input type="text" id="usuario" placeholder="Insira o nome de Usuário" required>
     </div>
 
+    <p class="auth-feedback" id="auth-feedback" role="alert" aria-live="polite"></p>
     <button type="submit" class="btn-principal">Criar conta</button>
 
     <div class="toggle">

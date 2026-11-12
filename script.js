@@ -1,7 +1,4 @@
-/* Utilitários compartilhados por todas as páginas */
-var chaveEstoque = "toca-acai-produtos";
-var chaveSaidas = "toca-acai-saidas";
-var chaveCadastros = "toca-acai-cadastros";
+/* A interface usa a API local; os dados persistentes ficam no SQLite. */
 var filtroTodosMeses = "todos";
 var mesesDoAno = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -9,27 +6,29 @@ var mesesDoAno = [
 ];
 var limiteEstoqueBaixo = 3;
 
-function carregarLista(chave) {
-  var dados = localStorage.getItem(chave);
-  if (dados === null) {
-    return [];
+async function requisitar(url, opcoes) {
+  var resposta = await fetch(url, Object.assign({
+    headers: { "Content-Type": "application/json" }
+  }, opcoes || {}));
+  if (resposta.status === 204) {
+    return null;
   }
-
-  var lista = JSON.parse(dados);
-  if (!Array.isArray(lista)) {
-    throw new Error("Os dados armazenados em " + chave + " são inválidos.");
+  var dados = await resposta.json();
+  if (!resposta.ok) {
+    if (resposta.status === 401 && url !== "/api/login" && url !== "/api/usuarios") {
+      window.location.assign("/index.html");
+    }
+    throw new Error(dados.erro || "Falha ao comunicar com o banco de dados.");
   }
-  return lista;
+  return dados;
 }
 
-function salvarLista(chave, lista) {
-  try {
-    localStorage.setItem(chave, JSON.stringify(lista));
-    return true;
-  } catch (erro) {
-    window.alert("Não foi possível salvar os dados. Verifique o espaço disponível no navegador.");
-    return false;
-  }
+async function carregarDados() {
+  return requisitar("/api/dados");
+}
+
+function mostrarErro(erro) {
+  window.alert(erro.message || "Não foi possível concluir a operação.");
 }
 
 function hojeComoData() {
@@ -42,10 +41,7 @@ function hojeComoData() {
 }
 
 function preencherSeletorMeses(seletor) {
-  if (!seletor) {
-    return;
-  }
-
+  if (!seletor) return;
   seletor.textContent = "";
   var opcaoTodos = document.createElement("option");
   opcaoTodos.value = filtroTodosMeses;
@@ -61,40 +57,9 @@ function preencherSeletorMeses(seletor) {
 }
 
 function registroNoMes(data, mesSelecionado) {
-  if (!data || mesSelecionado === filtroTodosMeses) {
-    return true;
-  }
+  if (!data || mesSelecionado === filtroTodosMeses) return true;
   var partes = data.split("-");
-  if (partes.length < 2) {
-    return true;
-  }
-  return String(Number(partes[1]) - 1) === mesSelecionado;
-}
-
-function obterCategoriasCadastradas() {
-  return carregarLista(chaveCadastros).filter(function (registro) {
-    return registro.secao === "categoria" && registro.nome.trim();
-  });
-}
-
-function encontrarCategoria(categorias, categoriaId, nomeCategoria) {
-  if (categoriaId) {
-    var porId = categorias.find(function (categoria) {
-      return categoria.id === categoriaId;
-    });
-    if (porId) {
-      return porId;
-    }
-  }
-
-  return categorias.find(function (categoria) {
-    return normalizarTexto(categoria.nome) === normalizarTexto(nomeCategoria);
-  }) || null;
-}
-
-function nomeCategoriaDoProduto(produto, categorias) {
-  var categoria = encontrarCategoria(categorias, produto.categoriaId, produto.categoria);
-  return categoria ? categoria.nome : produto.categoria;
+  return partes.length < 2 || String(Number(partes[1]) - 1) === mesSelecionado;
 }
 
 function formatarMoeda(valor) {
@@ -111,9 +76,7 @@ function normalizarTexto(texto) {
 function criarCelula(texto, classe) {
   var celula = document.createElement("td");
   celula.textContent = texto;
-  if (classe) {
-    celula.className = classe;
-  }
+  if (classe) celula.className = classe;
   return celula;
 }
 
@@ -132,27 +95,20 @@ function configurarModais() {
       if (overlay) {
         overlay.classList.add("aberto");
         var primeiroCampo = overlay.querySelector("input, select");
-        if (primeiroCampo) {
-          primeiroCampo.focus();
-        }
+        if (primeiroCampo) primeiroCampo.focus();
       }
     });
   });
-
   document.querySelectorAll("[data-fechar]").forEach(function (botao) {
     botao.addEventListener("click", function () {
       botao.closest(".overlay").classList.remove("aberto");
     });
   });
-
   document.querySelectorAll(".overlay").forEach(function (overlay) {
     overlay.addEventListener("click", function (evento) {
-      if (evento.target === overlay) {
-        overlay.classList.remove("aberto");
-      }
+      if (evento.target === overlay) overlay.classList.remove("aberto");
     });
   });
-
   document.addEventListener("keydown", function (evento) {
     if (evento.key === "Escape") {
       document.querySelectorAll(".overlay.aberto").forEach(function (overlay) {
@@ -162,10 +118,100 @@ function configurarModais() {
   });
 }
 
-/* Página Estoque: inclusão, edição, busca e resumo mensal */
-function configurarEstoque() {
-  var produtos = carregarLista(chaveEstoque);
-  var categorias = obterCategoriasCadastradas();
+function nomeCategoria(produto, categorias) {
+  var categoria = categorias.find(function (item) {
+    return item.id === produto.categoriaId;
+  });
+  return categoria ? categoria.nome : produto.categoria || "";
+}
+
+function configurarAutenticacao() {
+  var formularioLogin = document.getElementById("form-login");
+  var formularioRegistro = document.getElementById("form-registro");
+  var mensagem = document.getElementById("auth-feedback");
+
+  function mostrarMensagem(texto) {
+    if (mensagem) mensagem.textContent = texto;
+  }
+
+  if (formularioLogin) {
+    if (new URLSearchParams(window.location.search).has("cadastro")) {
+      mostrarMensagem("Conta criada. Entre com seu e-mail e senha.");
+    }
+    formularioLogin.addEventListener("submit", async function (evento) {
+      evento.preventDefault();
+      mostrarMensagem("");
+      try {
+        await requisitar("/api/login", {
+          method: "POST",
+          body: JSON.stringify({
+            email: document.getElementById("email").value.trim(),
+            senha: document.getElementById("senha").value
+          })
+        });
+        window.location.assign("/Estoque.html");
+      } catch (erro) {
+        mostrarMensagem(erro.message);
+      }
+    });
+  }
+
+  if (formularioRegistro) {
+    formularioRegistro.addEventListener("submit", async function (evento) {
+      evento.preventDefault();
+      mostrarMensagem("");
+      var senha = document.getElementById("senha").value;
+      if (senha !== document.getElementById("confirmar").value) {
+        mostrarMensagem("As senhas não conferem.");
+        return;
+      }
+      try {
+        await requisitar("/api/usuarios", {
+          method: "POST",
+          body: JSON.stringify({
+            nome: document.getElementById("usuario").value.trim(),
+            email: document.getElementById("email").value.trim(),
+            senha: senha
+          })
+        });
+        window.location.assign("/index.html?cadastro=ok");
+      } catch (erro) {
+        mostrarMensagem(erro.message);
+      }
+    });
+  }
+
+  var usuario = document.querySelector(".usuario");
+  if (usuario) {
+    requisitar("/api/sessao").then(function (dados) {
+      var avatar = usuario.querySelector(".avatar");
+      var nome = usuario.querySelector("[data-usuario-nome]");
+      var cargo = usuario.querySelector("[data-usuario-cargo]");
+      if (avatar) avatar.textContent = dados.nome.charAt(0).toUpperCase();
+      if (nome) nome.textContent = dados.nome;
+      if (cargo) cargo.textContent = dados.cargo;
+    }).catch(mostrarErro);
+  }
+
+  document.querySelectorAll("[data-sair]").forEach(function (botao) {
+    botao.addEventListener("click", async function () {
+      try {
+        await requisitar("/api/logout", {
+          method: "POST",
+          body: JSON.stringify({})
+        });
+        window.location.assign("/index.html");
+      } catch (erro) {
+        mostrarErro(erro);
+      }
+    });
+  });
+}
+
+async function configurarEstoque() {
+  var dados = await carregarDados();
+  var produtos = dados.produtos;
+  var categorias = dados.categorias;
   var formulario = document.getElementById("form-produto");
   var modal = document.getElementById("modal-cadastro");
   var tabela = document.querySelector("#tabela tbody");
@@ -180,264 +226,159 @@ function configurarEstoque() {
   var indicadores = document.querySelectorAll(".cards .valor");
   var produtoEmEdicao = null;
 
-  function dataDoProduto(produto) {
-    return produto.atualizadoEm || produto.criadoEm || hojeComoData();
-  }
-
-  function atualizarCategorias(selecionada, incluirCategoriaLegada) {
-    categorias = obterCategoriasCadastradas();
+  function atualizarCategorias(selecionada) {
     campoCategoria.textContent = "";
-
-    var opcaoInicial = document.createElement("option");
-    opcaoInicial.value = "";
-    opcaoInicial.textContent = categorias.length
+    var inicial = document.createElement("option");
+    inicial.value = "";
+    inicial.textContent = categorias.length
       ? "Selecione uma categoria"
       : "Cadastre uma categoria primeiro";
-    campoCategoria.appendChild(opcaoInicial);
-
+    campoCategoria.appendChild(inicial);
     categorias.forEach(function (categoria) {
       var opcao = document.createElement("option");
-      opcao.value = categoria.id;
+      opcao.value = String(categoria.id);
       opcao.textContent = categoria.nome;
       campoCategoria.appendChild(opcao);
     });
-
-    if (incluirCategoriaLegada && selecionada &&
-        !categorias.some(function (categoria) {
-          return categoria.id === selecionada.categoriaId ||
-            normalizarTexto(categoria.nome) === normalizarTexto(selecionada.categoria);
-        })) {
-      var categoriaLegada = document.createElement("option");
-      categoriaLegada.value = selecionada.categoriaId || selecionada.categoria;
-      categoriaLegada.textContent = selecionada.categoria + " (categoria antiga)";
-      campoCategoria.appendChild(categoriaLegada);
-    }
-
-    if (selecionada) {
-      var categoriaAtual = encontrarCategoria(
-        categorias,
-        selecionada.categoriaId,
-        selecionada.categoria
-      );
-      campoCategoria.value = categoriaAtual
-        ? categoriaAtual.id
-        : (selecionada.categoriaId || selecionada.categoria);
-    } else {
-      campoCategoria.value = "";
-    }
-    campoCategoria.disabled = categorias.length === 0 && !incluirCategoriaLegada;
+    campoCategoria.value = selecionada ? String(selecionada.categoriaId) : "";
+    campoCategoria.disabled = categorias.length === 0;
   }
 
   function desenharEstoque() {
     var termo = normalizarTexto(busca.value.trim());
     var filtrados = produtos.filter(function (produto) {
       var texto = [
-        produto.id,
-        produto.nome,
-        nomeCategoriaDoProduto(produto, categorias),
-        produto.quantidade,
-        produto.preco
+        produto.id, produto.nome, nomeCategoria(produto, categorias),
+        produto.quantidade, produto.preco
       ].join(" ");
-
-      return registroNoMes(dataDoProduto(produto), seletorMes.value) &&
+      return registroNoMes(produto.criadoEm, seletorMes.value) &&
         normalizarTexto(texto).indexOf(termo) !== -1;
     });
     tabela.textContent = "";
-
-    if (filtrados.length === 0) {
-      criarLinhaVazia(
-        tabela,
-        6,
-        termo ? "Nenhum produto encontrado" : "Nenhum produto cadastrado neste mês"
-      );
+    if (!filtrados.length) {
+      criarLinhaVazia(tabela, 6, termo
+        ? "Nenhum produto encontrado"
+        : "Nenhum produto cadastrado neste mês");
     }
-
     filtrados.forEach(function (produto) {
       var linha = document.createElement("tr");
       linha.appendChild(criarCelula(produto.id));
       linha.appendChild(criarCelula(produto.nome));
-      linha.appendChild(criarCelula(nomeCategoriaDoProduto(produto, categorias)));
+      linha.appendChild(criarCelula(nomeCategoria(produto, categorias)));
       linha.appendChild(criarCelula(String(produto.quantidade), "num"));
       linha.appendChild(criarCelula(formatarMoeda(produto.preco)));
-
       var celulaAcao = document.createElement("td");
       var acoes = document.createElement("div");
       acoes.className = "cadastro-acoes";
-      var botaoEditar = document.createElement("button");
-      botaoEditar.type = "button";
-      botaoEditar.className = "cadastro-acao";
-      botaoEditar.textContent = "Editar";
-      botaoEditar.setAttribute("aria-label", "Editar " + produto.nome);
-      botaoEditar.addEventListener("click", function () {
-        abrirEdicao(produto);
+      var editar = document.createElement("button");
+      editar.type = "button";
+      editar.className = "cadastro-acao";
+      editar.textContent = "Editar";
+      editar.setAttribute("aria-label", "Editar " + produto.nome);
+      editar.addEventListener("click", function () {
+        produtoEmEdicao = produto;
+        formulario.reset();
+        atualizarCategorias(produto);
+        campoNome.value = produto.nome;
+        campoQuantidade.min = "0";
+        campoQuantidade.value = String(produto.quantidade);
+        campoPreco.value = String(produto.preco);
+        tituloModal.textContent = "Editar Produto";
+        botaoSalvar.textContent = "Salvar alterações";
+        modal.classList.add("aberto");
+        campoNome.focus();
       });
-      acoes.appendChild(botaoEditar);
+      acoes.appendChild(editar);
       celulaAcao.appendChild(acoes);
       linha.appendChild(celulaAcao);
       tabela.appendChild(linha);
     });
-
     indicadores[0].textContent = String(filtrados.length);
-    indicadores[1].textContent = formatarMoeda(filtrados.reduce(function (total, produto) {
-      return total + produto.quantidade * produto.preco;
+    indicadores[1].textContent = formatarMoeda(filtrados.reduce(function (soma, produto) {
+      return soma + produto.quantidade * produto.preco;
     }, 0));
     indicadores[2].textContent = String(filtrados.filter(function (produto) {
       return produto.quantidade <= limiteEstoqueBaixo;
     }).length);
   }
 
-  function proximoId() {
-    var maior = produtos.reduce(function (valor, produto) {
-      return Math.max(valor, Number(produto.id) || 0);
-    }, 0);
-    return String(maior + 1).padStart(3, "0");
-  }
-
-  function abrirInclusao() {
+  document.querySelector("[data-abrir='modal-cadastro']").addEventListener("click", function () {
     produtoEmEdicao = null;
     formulario.reset();
-    atualizarCategorias(null, false);
+    atualizarCategorias(null);
     campoQuantidade.min = "1";
-    campoQuantidade.value = "";
     tituloModal.textContent = "Adicionar Produto";
     botaoSalvar.textContent = "Adicionar";
-  }
+  });
 
-  function abrirEdicao(produto) {
-    produtoEmEdicao = produto;
-    formulario.reset();
-    atualizarCategorias(produto, true);
-    campoNome.value = produto.nome;
-    campoQuantidade.min = "0";
-    campoQuantidade.value = String(produto.quantidade);
-    campoPreco.value = String(produto.preco);
-    tituloModal.textContent = "Editar Produto";
-    botaoSalvar.textContent = "Salvar alterações";
-    modal.classList.add("aberto");
-    campoNome.focus();
-  }
-
-  document.querySelector("[data-abrir='modal-cadastro']").addEventListener("click", abrirInclusao);
-  formulario.addEventListener("submit", function (evento) {
+  formulario.addEventListener("submit", async function (evento) {
     evento.preventDefault();
     var nome = campoNome.value.trim();
     var quantidade = Number(campoQuantidade.value);
-    var categoriaSelecionada = categorias.find(function (categoria) {
-      return categoria.id === campoCategoria.value;
-    });
-    var categoriaAnterior = produtoEmEdicao
-      ? encontrarCategoria(categorias, produtoEmEdicao.categoriaId, produtoEmEdicao.categoria)
-      : null;
-    var mantendoCategoriaLegada = produtoEmEdicao && !categoriaAnterior &&
-      campoCategoria.value === (produtoEmEdicao.categoriaId || produtoEmEdicao.categoria);
-    var categoriaNome = categoriaSelecionada
-      ? categoriaSelecionada.nome
-      : (categoriaAnterior ? categoriaAnterior.nome :
-        (mantendoCategoriaLegada ? produtoEmEdicao.categoria : ""));
-    var categoriaId = categoriaSelecionada
-      ? categoriaSelecionada.id
-      : (produtoEmEdicao ? produtoEmEdicao.categoriaId : "");
-    var preco = Number(campoPreco.value);
-    var quantidadeMinima = produtoEmEdicao ? 0 : 1;
-
-    if (!nome || !categoriaNome || !Number.isInteger(quantidade) || quantidade < quantidadeMinima ||
-        !Number.isFinite(preco) || preco < 0) {
-      window.alert("Informe o nome, selecione uma categoria cadastrada e preencha uma quantidade e preço válidos.");
+    var categoriaId = Number(campoCategoria.value);
+    var preco = Number(campoPreco.value || 0);
+    if (!nome || !categoriaId || !Number.isInteger(quantidade) ||
+        quantidade < (produtoEmEdicao ? 0 : 1) || !Number.isFinite(preco) || preco < 0) {
+      window.alert("Informe nome, categoria, quantidade e preço válidos.");
       return;
     }
-
-    var duplicado = produtos.some(function (produto) {
+    var duplicado = produtos.find(function (produto) {
       return produto.id !== (produtoEmEdicao && produtoEmEdicao.id) &&
         normalizarTexto(produto.nome) === normalizarTexto(nome) &&
-        normalizarTexto(nomeCategoriaDoProduto(produto, categorias)) === normalizarTexto(categoriaNome);
+        produto.categoriaId === categoriaId;
     });
-    if (duplicado) {
-      window.alert("Já existe um produto com esse nome e categoria.");
-      return;
-    }
-
-    var atualizados;
-    if (produtoEmEdicao) {
-      atualizados = produtos.map(function (produto) {
-        if (produto.id !== produtoEmEdicao.id) {
-          return produto;
-        }
-        return {
-          id: produto.id,
-          nome: nome,
-          categoria: categoriaNome,
-          categoriaId: categoriaId,
-          quantidade: quantidade,
-          preco: preco,
-          criadoEm: produto.criadoEm || dataDoProduto(produto),
-          atualizadoEm: hojeComoData()
-        };
-      });
-    } else {
-      var existente = produtos.find(function (produto) {
-        return normalizarTexto(produto.nome) === normalizarTexto(nome) &&
-          normalizarTexto(nomeCategoriaDoProduto(produto, categorias)) === normalizarTexto(categoriaNome);
-      });
-      if (existente) {
-        atualizados = produtos.map(function (produto) {
-          if (produto.id !== existente.id) {
-            return produto;
-          }
-          return {
-            id: produto.id,
-            nome: produto.nome,
-            categoria: categoriaNomeDoProduto(produto, categorias),
-            categoriaId: categoriaId || produto.categoriaId,
-            quantidade: produto.quantidade + quantidade,
-            preco: preco || produto.preco,
-            criadoEm: produto.criadoEm || dataDoProduto(produto),
-            atualizadoEm: hojeComoData()
-          };
+    try {
+      if (produtoEmEdicao) {
+        await requisitar("/api/produtos/" + produtoEmEdicao.id, {
+          method: "PUT",
+          body: JSON.stringify({ nome: nome, quantidade: quantidade, categoriaId: categoriaId, preco: preco })
+        });
+      } else if (duplicado) {
+        await requisitar("/api/produtos/" + duplicado.id, {
+          method: "PUT",
+          body: JSON.stringify({
+            nome: duplicado.nome, quantidade: duplicado.quantidade + quantidade,
+            categoriaId: categoriaId, preco: preco || duplicado.preco
+          })
         });
       } else {
-        atualizados = produtos.concat({
-          id: proximoId(),
-          nome: nome,
-          categoria: categoriaNome,
-          categoriaId: categoriaId,
-          quantidade: quantidade,
-          preco: preco,
-          criadoEm: hojeComoData(),
-          atualizadoEm: hojeComoData()
+        await requisitar("/api/produtos", {
+          method: "POST",
+          body: JSON.stringify({ nome: nome, quantidade: quantidade, categoriaId: categoriaId, preco: preco })
         });
       }
-    }
-
-    if (salvarLista(chaveEstoque, atualizados)) {
-      produtos = atualizados;
+      produtos = (await carregarDados()).produtos;
       produtoEmEdicao = null;
       desenharEstoque();
       formulario.reset();
       modal.classList.remove("aberto");
+    } catch (erro) {
+      mostrarErro(erro);
     }
   });
-
   busca.addEventListener("input", desenharEstoque);
   seletorMes.addEventListener("change", desenharEstoque);
-  window.addEventListener("storage", function (evento) {
-    if (evento.key === chaveCadastros) {
-      atualizarCategorias(produtoEmEdicao, Boolean(produtoEmEdicao));
+  preencherSeletorMeses(seletorMes);
+  atualizarCategorias(null);
+  desenharEstoque();
+  window.addEventListener("focus", async function () {
+    try {
+      var atualizados = await carregarDados();
+      produtos = atualizados.produtos;
+      categorias = atualizados.categorias;
+      atualizarCategorias(produtoEmEdicao);
       desenharEstoque();
-    } else if (evento.key === chaveEstoque) {
-      produtos = carregarLista(chaveEstoque);
-      desenharEstoque();
+    } catch (erro) {
+      mostrarErro(erro);
     }
   });
-  preencherSeletorMeses(seletorMes);
-  atualizarCategorias(null, false);
-  desenharEstoque();
 }
 
-/* Página Saída: baixa de estoque e histórico mensal de movimentações */
-function configurarSaidas() {
-  var produtos = carregarLista(chaveEstoque);
-  var saidas = carregarLista(chaveSaidas);
-  var categorias = obterCategoriasCadastradas();
+async function configurarSaidas() {
+  var dados = await carregarDados();
+  var produtos = dados.produtos;
+  var saidas = dados.saidas;
+  var categorias = dados.categorias;
   var formulario = document.getElementById("form-saida");
   var tabela = document.querySelector("#tabela tbody");
   var busca = document.getElementById("busca");
@@ -449,75 +390,57 @@ function configurarSaidas() {
   var campoData = document.getElementById("input-data");
   var campoMotivo = document.getElementById("select-motivo");
 
-  function encontrarProdutoSelecionado() {
-    return produtos.find(function (produto) {
-      return produto.id === campoProduto.value;
-    });
-  }
-
   function atualizarProdutosDisponiveis() {
     campoProduto.textContent = "";
-    var opcaoInicial = document.createElement("option");
-    opcaoInicial.value = "";
-    opcaoInicial.textContent = "Selecione um produto do estoque";
-    campoProduto.appendChild(opcaoInicial);
+    var inicial = document.createElement("option");
+    inicial.value = "";
+    inicial.textContent = "Selecione um produto do estoque";
+    campoProduto.appendChild(inicial);
     produtos.filter(function (produto) {
       return produto.quantidade > 0;
     }).forEach(function (produto) {
       var opcao = document.createElement("option");
-      opcao.value = produto.id;
-      opcao.textContent = produto.nome + " - " +
-        nomeCategoriaDoProduto(produto, categorias) +
+      opcao.value = String(produto.id);
+      opcao.textContent = produto.nome + " - " + nomeCategoria(produto, categorias) +
         " (" + produto.quantidade + " disponíveis)";
       campoProduto.appendChild(opcao);
     });
   }
 
   function atualizarDadosDoProduto() {
-    var produto = encontrarProdutoSelecionado();
-    var nomeCategoria = produto ? nomeCategoriaDoProduto(produto, categorias) : "";
+    var produto = produtos.find(function (item) {
+      return String(item.id) === campoProduto.value;
+    });
+    var categoriaNome = produto ? nomeCategoria(produto, categorias) : "";
     campoCategoria.textContent = "";
-    var opcaoInicial = document.createElement("option");
-    opcaoInicial.value = nomeCategoria;
-    opcaoInicial.textContent = nomeCategoria || "Selecione um produto";
-    campoCategoria.appendChild(opcaoInicial);
-    campoCategoria.value = nomeCategoria;
-
-    var quantidade = Number(campoQuantidade.value);
-    campoValor.value = produto && Number.isFinite(quantidade) && quantidade > 0
-      ? (produto.preco * quantidade).toFixed(2)
+    var opcao = document.createElement("option");
+    opcao.value = categoriaNome;
+    opcao.textContent = categoriaNome || "Selecione um produto";
+    campoCategoria.appendChild(opcao);
+    campoValor.value = produto && Number(campoQuantidade.value) > 0
+      ? (produto.preco * Number(campoQuantidade.value)).toFixed(2)
       : "";
   }
 
   function desenharSaidas() {
     var termo = normalizarTexto(busca.value.trim());
     var filtradas = saidas.filter(function (saida) {
-      var texto = [
-        saida.id,
-        saida.nome,
-        nomeCategoriaDoProduto(saida, categorias),
-        saida.quantidade,
-        saida.motivo,
-        saida.data
-      ].join(" ");
+      var texto = [saida.id, saida.nome, nomeCategoria(saida, categorias),
+        saida.quantidade, saida.motivo, saida.data].join(" ");
       return registroNoMes(saida.data, seletorMes.value) &&
         normalizarTexto(texto).indexOf(termo) !== -1;
     });
     tabela.textContent = "";
-
-    if (filtradas.length === 0) {
-      criarLinhaVazia(
-        tabela,
-        5,
-        termo ? "Nenhuma saída encontrada" : "Nenhuma saída registrada neste mês"
-      );
+    if (!filtradas.length) {
+      criarLinhaVazia(tabela, 5, termo
+        ? "Nenhuma saída encontrada"
+        : "Nenhuma saída registrada neste mês");
     }
-
     filtradas.slice().reverse().forEach(function (saida) {
       var linha = document.createElement("tr");
       linha.appendChild(criarCelula(saida.id));
       linha.appendChild(criarCelula(saida.nome));
-      linha.appendChild(criarCelula(nomeCategoriaDoProduto(saida, categorias)));
+      linha.appendChild(criarCelula(nomeCategoria(saida, categorias)));
       linha.appendChild(criarCelula(String(saida.quantidade), "num"));
       linha.appendChild(criarCelula(saida.motivo));
       tabela.appendChild(linha);
@@ -530,14 +453,14 @@ function configurarSaidas() {
     atualizarProdutosDisponiveis();
     atualizarDadosDoProduto();
   });
-
   campoProduto.addEventListener("change", atualizarDadosDoProduto);
   campoQuantidade.addEventListener("input", atualizarDadosDoProduto);
-  formulario.addEventListener("submit", function (evento) {
+  formulario.addEventListener("submit", async function (evento) {
     evento.preventDefault();
-    var produto = encontrarProdutoSelecionado();
+    var produto = produtos.find(function (item) {
+      return String(item.id) === campoProduto.value;
+    });
     var quantidade = Number(campoQuantidade.value);
-
     if (!produto) {
       window.alert("Selecione um produto existente no estoque.");
       return;
@@ -546,85 +469,53 @@ function configurarSaidas() {
       window.alert("Informe uma quantidade inteira maior que zero.");
       return;
     }
-    if (quantidade > produto.quantidade) {
-      window.alert("Quantidade indisponível. Estoque atual: " + produto.quantidade + ".");
-      return;
+    try {
+      await requisitar("/api/saidas", {
+        method: "POST",
+        body: JSON.stringify({
+          produtoId: produto.id,
+          quantidade: quantidade,
+          motivo: campoMotivo.value,
+          data: campoData.value || hojeComoData()
+        })
+      });
+      dados = await carregarDados();
+      produtos = dados.produtos;
+      saidas = dados.saidas;
+      categorias = dados.categorias;
+      atualizarProdutosDisponiveis();
+      desenharSaidas();
+      formulario.reset();
+      document.getElementById("modal-saida").classList.remove("aberto");
+    } catch (erro) {
+      mostrarErro(erro);
     }
-
-    var estoqueAtualizado = produtos.map(function (item) {
-      if (item.id !== produto.id) {
-        return item;
-      }
-      return {
-        id: item.id,
-        nome: item.nome,
-        categoria: item.categoria,
-        quantidade: item.quantidade - quantidade,
-        preco: item.preco,
-        criadoEm: item.criadoEm || item.atualizadoEm || hojeComoData(),
-        atualizadoEm: hojeComoData()
-      };
-    });
-    var proximoId = saidas.reduce(function (maior, saida) {
-      return Math.max(maior, Number(saida.id) || 0);
-    }, 0) + 1;
-    var novaSaida = {
-      id: String(proximoId).padStart(3, "0"),
-      produtoId: produto.id,
-      nome: produto.nome,
-      categoria: nomeCategoriaDoProduto(produto, categorias),
-      categoriaId: produto.categoriaId ||
-        (encontrarCategoria(categorias, "", produto.categoria) || {}).id || "",
-      quantidade: quantidade,
-      motivo: campoMotivo.value,
-      data: campoData.value || hojeComoData()
-    };
-    var saidasAtualizadas = saidas.concat(novaSaida);
-
-    if (!salvarLista(chaveEstoque, estoqueAtualizado)) {
-      return;
-    }
-    if (!salvarLista(chaveSaidas, saidasAtualizadas)) {
-      if (!salvarLista(chaveEstoque, produtos)) {
-        window.alert("Não foi possível restaurar o estoque após falha ao salvar a saída.");
-      }
-      return;
-    }
-
-    produtos = estoqueAtualizado;
-    saidas = saidasAtualizadas;
-    atualizarProdutosDisponiveis();
-    desenharSaidas();
-    formulario.reset();
-    document.getElementById("modal-saida").classList.remove("aberto");
   });
-
   busca.addEventListener("input", desenharSaidas);
   seletorMes.addEventListener("change", desenharSaidas);
-  window.addEventListener("storage", function (evento) {
-    if (evento.key === chaveCadastros) {
-      categorias = obterCategoriasCadastradas();
-      atualizarProdutosDisponiveis();
-      atualizarDadosDoProduto();
-      desenharSaidas();
-    } else if (evento.key === chaveEstoque) {
-      produtos = carregarLista(chaveEstoque);
-      atualizarProdutosDisponiveis();
-      atualizarDadosDoProduto();
-    } else if (evento.key === chaveSaidas) {
-      saidas = carregarLista(chaveSaidas);
-      desenharSaidas();
-    }
-  });
   preencherSeletorMeses(seletorMes);
   atualizarProdutosDisponiveis();
   desenharSaidas();
+  window.addEventListener("focus", async function () {
+    try {
+      dados = await carregarDados();
+      produtos = dados.produtos;
+      saidas = dados.saidas;
+      categorias = dados.categorias;
+      atualizarProdutosDisponiveis();
+      atualizarDadosDoProduto();
+      desenharSaidas();
+    } catch (erro) {
+      mostrarErro(erro);
+    }
+  });
 }
 
-/* Página Cadastro: categorias, contas e filtro por mês de vencimento */
-function configurarCadastro() {
-  var chaveArmazenamento = "toca-acai-cadastros";
-  var registros = carregarLista(chaveArmazenamento);
+async function configurarCadastro() {
+  var dados = await carregarDados();
+  var registros = dados.categorias.map(function (item) {
+    return { id: item.id, secao: "categoria", nome: item.nome };
+  }).concat(dados.contas);
   var formulario = document.getElementById("form-cadastro");
   var modal = document.getElementById("modal-cadastro");
   var campoSecao = document.getElementById("secao");
@@ -641,153 +532,72 @@ function configurarCadastro() {
   var botaoSalvar = document.getElementById("botao-salvar");
   var registroEmEdicao = null;
 
-  function gerarId(secao) {
-    var maiorId = 0;
-    registros.forEach(function (registro) {
-      if (registro.secao === secao) {
-        maiorId = Math.max(maiorId, parseInt(registro.id, 10) || 0);
-      }
+  function obterRegistros(secao) {
+    return registros.filter(function (item) {
+      return item.secao === secao && corresponde(item);
     });
-    return String(maiorId + 1).padStart(3, "0");
+  }
+
+  function corresponde(registro) {
+    var termo = normalizarTexto(campoBusca.value.trim());
+    var texto = [registro.id, registro.nome, registro.descricao, registro.cliente,
+      registro.status].join(" ");
+    return (!termo || normalizarTexto(texto).indexOf(termo) !== -1) &&
+      (registro.secao === "categoria" || registroNoMes(registro.vencimento, campoMes.value));
   }
 
   function atualizarCamposDoFormulario() {
-    var secao = campoSecao.value;
-    var ehCategoria = secao === "categoria";
-    document.querySelectorAll(
-      "#campo-valor, #campo-cliente, #campo-vencimento, #campo-status"
-    ).forEach(function (campo) {
-      campo.style.display = ehCategoria ? "none" : "";
-    });
-    campoValor.required = secao === "pagar" || secao === "receber";
-    campoId.value = secao ? gerarId(secao) : "";
+    var ehCategoria = campoSecao.value === "categoria";
+    document.querySelectorAll("#campo-valor, #campo-cliente, #campo-vencimento, #campo-status")
+      .forEach(function (campo) {
+        campo.style.display = ehCategoria ? "none" : "";
+      });
+    campoValor.required = campoSecao.value === "pagar" || campoSecao.value === "receber";
+    campoId.value = campoSecao.value ? "Gerado ao salvar" : "";
   }
 
   function formatarData(data) {
-    if (!data) {
-      return "—";
-    }
+    if (!data) return "—";
     var partes = data.split("-");
-    return partes[2] + "/" + partes[1] + "/" + partes[0];
-  }
-
-  function registroCorrespondeAoFiltro(registro) {
-    var termo = normalizarTexto(campoBusca.value.trim());
-    var texto = [
-      registro.id,
-      registro.nome,
-      registro.descricao,
-      registro.cliente,
-      registro.status
-    ].join(" ");
-
-    if (termo && normalizarTexto(texto).indexOf(termo) === -1) {
-      return false;
-    }
-    if (registro.secao !== "categoria" &&
-        !registroNoMes(registro.vencimento, campoMes.value)) {
-      return false;
-    }
-    return true;
-  }
-
-  function obterRegistros(secao) {
-    return registros.filter(function (registro) {
-      return registro.secao === secao && registroCorrespondeAoFiltro(registro);
-    });
-  }
-
-  function criarAcoes(registro) {
-    var acoes = document.createElement("div");
-    acoes.className = "cadastro-acoes";
-
-    var botaoEditar = document.createElement("button");
-    botaoEditar.type = "button";
-    botaoEditar.className = "cadastro-acao";
-    botaoEditar.textContent = "Editar";
-    botaoEditar.setAttribute("aria-label", "Editar " + registro.nome);
-    botaoEditar.addEventListener("click", function () {
-      abrirEdicao(registro);
-    });
-    acoes.appendChild(botaoEditar);
-
-    var botaoExcluir = document.createElement("button");
-    botaoExcluir.type = "button";
-    botaoExcluir.className = "cadastro-acao cadastro-acao-excluir";
-    botaoExcluir.textContent = "Excluir";
-    botaoExcluir.setAttribute("aria-label", "Excluir " + registro.nome);
-    botaoExcluir.addEventListener("click", function () {
-      if (window.confirm("Deseja excluir este cadastro?")) {
-        var atualizados = registros.filter(function (item) {
-          return item.secao !== registro.secao || item.id !== registro.id;
-        });
-        if (salvarLista(chaveArmazenamento, atualizados)) {
-          registros = atualizados;
-          desenharPagina();
-          atualizarCamposDoFormulario();
-        }
-      }
-    });
-    acoes.appendChild(botaoExcluir);
-    return acoes;
+    return partes.length === 3 ? partes[2] + "/" + partes[1] + "/" + partes[0] : data;
   }
 
   function desenharCategorias() {
     var tabela = document.getElementById("lista-categorias");
     var categorias = obterRegistros("categoria");
     tabela.textContent = "";
-
-    if (categorias.length === 0) {
-      criarLinhaVazia(tabela, 3, "Nenhum cadastro encontrado");
-    }
+    if (!categorias.length) criarLinhaVazia(tabela, 3, "Nenhum cadastro encontrado");
     categorias.forEach(function (categoria) {
       var linha = document.createElement("tr");
       linha.appendChild(criarCelula(categoria.id));
-      var celulaNome = criarCelula(categoria.nome);
-      if (categoria.descricao) {
-        celulaNome.textContent += " — " + categoria.descricao;
-      }
-      linha.appendChild(celulaNome);
-      var celulaAcoes = document.createElement("td");
-      celulaAcoes.appendChild(criarAcoes(categoria));
-      linha.appendChild(celulaAcoes);
+      linha.appendChild(criarCelula(categoria.nome));
+      var acoes = document.createElement("td");
+      acoes.appendChild(criarAcoes(categoria));
+      linha.appendChild(acoes);
       tabela.appendChild(linha);
     });
-
     document.getElementById("quantidade-categorias").textContent = categorias.length;
     document.getElementById("total-categorias").textContent = "Total: " + categorias.length;
   }
 
   function desenharContas(secao) {
     var tabela = document.getElementById("lista-" + secao);
-    var totalElemento = document.getElementById("total-" + secao);
-    var quantidadeElemento = document.getElementById("quantidade-" + secao);
     var contas = obterRegistros(secao);
     var total = 0;
     tabela.textContent = "";
-
-    if (contas.length === 0) {
-      criarLinhaVazia(tabela, 6, "Nenhum cadastro encontrado");
-    }
+    if (!contas.length) criarLinhaVazia(tabela, 6, "Nenhum cadastro encontrado");
     contas.forEach(function (conta) {
       var linha = document.createElement("tr");
       linha.appendChild(criarCelula(conta.id));
-
-      var celulaNome = criarCelula(conta.nome);
-      var detalhes = [];
-      if (conta.descricao) {
-        detalhes.push(conta.descricao);
+      var nome = criarCelula(conta.nome);
+      var detalhes = [conta.descricao, conta.cliente].filter(Boolean);
+      if (detalhes.length) {
+        nome.appendChild(document.createElement("br"));
+        var pequeno = document.createElement("small");
+        pequeno.textContent = detalhes.join(" - ");
+        nome.appendChild(pequeno);
       }
-      if (conta.cliente) {
-        detalhes.push(conta.cliente);
-      }
-      if (detalhes.length > 0) {
-        var textoDetalhes = document.createElement("small");
-        textoDetalhes.textContent = detalhes.join(" - ");
-        celulaNome.appendChild(document.createElement("br"));
-        celulaNome.appendChild(textoDetalhes);
-      }
-      linha.appendChild(celulaNome);
+      linha.appendChild(nome);
       linha.appendChild(criarCelula(formatarMoeda(conta.valor), "num"));
       linha.appendChild(criarCelula(formatarData(conta.vencimento)));
       linha.appendChild(criarCelula(conta.status));
@@ -797,26 +607,14 @@ function configurarCadastro() {
       tabela.appendChild(linha);
       total += Number(conta.valor);
     });
-
-    quantidadeElemento.textContent = "Quantidade: " + contas.length;
-    totalElemento.textContent = formatarMoeda(total);
+    document.getElementById("quantidade-" + secao).textContent = "Quantidade: " + contas.length;
+    document.getElementById("total-" + secao).textContent = formatarMoeda(total);
   }
 
   function desenharPagina() {
     desenharCategorias();
     desenharContas("pagar");
     desenharContas("receber");
-  }
-
-  function abrirInclusao() {
-    registroEmEdicao = null;
-    formulario.reset();
-    campoSecao.disabled = false;
-    tituloModal.textContent = "Novo Cadastro";
-    botaoSalvar.textContent = "Adicionar";
-    atualizarCamposDoFormulario();
-    modal.classList.add("aberto");
-    campoSecao.focus();
   }
 
   function abrirEdicao(registro) {
@@ -839,7 +637,57 @@ function configurarCadastro() {
     campoNome.focus();
   }
 
-  function fecharModal() {
+  function criarAcoes(registro) {
+    var acoes = document.createElement("div");
+    acoes.className = "cadastro-acoes";
+    var editar = document.createElement("button");
+    editar.type = "button";
+    editar.className = "cadastro-acao";
+    editar.textContent = "Editar";
+    editar.setAttribute("aria-label", "Editar " + registro.nome);
+    editar.addEventListener("click", function () {
+      abrirEdicao(registro);
+    });
+    acoes.appendChild(editar);
+    var excluir = document.createElement("button");
+    excluir.type = "button";
+    excluir.className = "cadastro-acao cadastro-acao-excluir";
+    excluir.textContent = "Excluir";
+    excluir.setAttribute("aria-label", "Excluir " + registro.nome);
+    excluir.addEventListener("click", async function () {
+      if (!window.confirm("Deseja excluir este cadastro?")) return;
+      try {
+        await requisitar("/api/" + (registro.secao === "categoria" ? "categorias" : "contas") +
+          "/" + registro.id, { method: "DELETE" });
+        dados = await carregarDados();
+        sincronizarRegistros();
+        desenharPagina();
+        atualizarCamposDoFormulario();
+      } catch (erro) {
+        mostrarErro(erro);
+      }
+    });
+    acoes.appendChild(excluir);
+    return acoes;
+  }
+
+  function sincronizarRegistros() {
+    registros = dados.categorias.map(function (item) {
+      return { id: item.id, secao: "categoria", nome: item.nome };
+    }).concat(dados.contas);
+  }
+
+  document.querySelector("[data-abrir='modal-cadastro']").addEventListener("click", function () {
+    registroEmEdicao = null;
+    formulario.reset();
+    campoSecao.disabled = false;
+    tituloModal.textContent = "Novo Cadastro";
+    botaoSalvar.textContent = "Adicionar";
+    atualizarCamposDoFormulario();
+    modal.classList.add("aberto");
+    campoSecao.focus();
+  });
+  modal.querySelector("[data-fechar]").addEventListener("click", function () {
     modal.classList.remove("aberto");
     registroEmEdicao = null;
     formulario.reset();
@@ -847,75 +695,68 @@ function configurarCadastro() {
     tituloModal.textContent = "Novo Cadastro";
     botaoSalvar.textContent = "Adicionar";
     atualizarCamposDoFormulario();
-  }
-
-  document.querySelector("[data-abrir='modal-cadastro']").addEventListener("click", abrirInclusao);
-  modal.querySelector("[data-fechar]").addEventListener("click", fecharModal);
+  });
   modal.addEventListener("click", function (evento) {
-    if (evento.target === modal) {
-      fecharModal();
-    }
+    if (evento.target === modal) modal.classList.remove("aberto");
   });
   campoSecao.addEventListener("change", atualizarCamposDoFormulario);
   campoBusca.addEventListener("input", desenharPagina);
   campoMes.addEventListener("change", desenharPagina);
-  formulario.addEventListener("submit", function (evento) {
+  formulario.addEventListener("submit", async function (evento) {
     evento.preventDefault();
     var secao = campoSecao.value;
     var registro = {
-      id: registroEmEdicao ? registroEmEdicao.id : gerarId(secao),
       secao: secao,
       nome: campoNome.value.trim(),
-      descricao: campoDescricao.value.trim(),
+      descricao: secao === "categoria" ? "" : campoDescricao.value.trim(),
       cliente: secao === "categoria" ? "" : campoCliente.value.trim(),
       vencimento: secao === "categoria" ? "" : campoVencimento.value,
       status: secao === "categoria" ? "" : campoStatus.value,
       valor: secao === "categoria" ? 0 : Number(campoValor.value)
     };
-    var atualizados = registros.slice();
-    if (registroEmEdicao) {
-      atualizados = registros.map(function (item) {
-        return item.secao === registroEmEdicao.secao && item.id === registroEmEdicao.id
-          ? registro
-          : item;
-      });
-    } else {
-      atualizados.push(registro);
+    if (!registro.nome || (secao !== "categoria" &&
+        (!Number.isFinite(registro.valor) || registro.valor < 0))) {
+      window.alert("Preencha os campos obrigatórios com valores válidos.");
+      return;
     }
-
-    if (salvarLista(chaveArmazenamento, atualizados)) {
-      registros = atualizados;
+    try {
+      var recurso = secao === "categoria" ? "categorias" : "contas";
+      await requisitar("/api/" + recurso + (registroEmEdicao ? "/" + registroEmEdicao.id : ""), {
+        method: registroEmEdicao ? "PUT" : "POST",
+        body: JSON.stringify(registro)
+      });
+      dados = await carregarDados();
+      sincronizarRegistros();
       desenharPagina();
-      fecharModal();
+      modal.classList.remove("aberto");
+      registroEmEdicao = null;
+      formulario.reset();
+      campoSecao.disabled = false;
+      atualizarCamposDoFormulario();
+    } catch (erro) {
+      mostrarErro(erro);
     }
   });
-
   preencherSeletorMeses(campoMes);
   atualizarCamposDoFormulario();
   desenharPagina();
 }
 
-/* Validação do formulário de criação de conta */
-function configurarRegistroDeConta() {
-  var formulario = document.getElementById("form-registro");
-  if (!formulario) {
-    return;
-  }
-  formulario.addEventListener("submit", function (evento) {
-    if (document.getElementById("senha").value !==
-        document.getElementById("confirmar").value) {
-      evento.preventDefault();
-      window.alert("As senhas não conferem.");
+async function iniciarAplicacao() {
+  configurarModais();
+  configurarAutenticacao();
+  try {
+    if (document.getElementById("form-produto")) {
+      await configurarEstoque();
+    } else if (document.getElementById("form-saida")) {
+      await configurarSaidas();
+    } else if (document.getElementById("form-cadastro")) {
+      await configurarCadastro();
     }
-  });
+  } catch (erro) {
+    window.alert("Não foi possível carregar os dados do banco. " +
+      "Inicie o servidor local e tente novamente.\n\n" + (erro.message || ""));
+  }
 }
 
-configurarModais();
-configurarRegistroDeConta();
-if (document.getElementById("form-produto")) {
-  configurarEstoque();
-} else if (document.getElementById("form-saida")) {
-  configurarSaidas();
-} else if (document.getElementById("form-cadastro")) {
-  configurarCadastro();
-}
+iniciarAplicacao();

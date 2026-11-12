@@ -1,0 +1,23 @@
+BANCO DA TOCA DO AÇAÍ
+=====================
+O projeto usa SQLite (um arquivo toca.db) e uma API local em Python.
+Não precisa instalar pacotes ou um servidor de banco separado.
+
+1) Instale o Python no computador da loja (python.org).
+2) Opcional: na pasta do projeto, rode `python banco-toca/criar_banco.py`
+   para criar o banco com dados de demonstração.
+3) Na pasta do projeto, rode `python banco-toca/servidor.py`.
+   Se ainda não houver banco, o servidor cria um vazio automaticamente.
+4) Abra http://127.0.0.1:8000 no navegador. Mantenha o terminal aberto
+   enquanto usar o sistema e pressione Ctrl+C para encerrar.
+5) Crie uma conta ou use o login de demonstração marcos@toca.com /
+   trocar123 (somente se criou o banco de exemplo). Troque a senha de
+   demonstração antes de usar o sistema com dados reais.
+
+As senhas têm no mínimo 8 caracteres e são guardadas como hash no banco.
+
+BACKUP: copie o arquivo toca.db para um pendrive ou nuvem (ex.: toda semana).
+RESTAURAR: coloque a cópia de volta na pasta, com o nome toca.db.
+VER OS DADOS: baixe o "DB Browser for SQLite" (gratuito) e abra o toca.db.
+
+O modo local guarda os dados somente no computador que está rodando o servidor.

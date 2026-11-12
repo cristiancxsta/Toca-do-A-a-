@@ -1,0 +1,2 @@
+python banco-toca/criar_banco.py  # opcional / NÃO USAR
+python banco-toca/servidor.py
